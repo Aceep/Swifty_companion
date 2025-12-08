@@ -1,16 +1,18 @@
-
 services:
-  expo:
-    build: .
-    container_name: expo-dev
-    working_dir: /app
+  rn-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: swifty-companion
+    env_file:
+      - ./companion/.env       # dev environment
     volumes:
-      - .:/app
-      - /app/node_modules
+      - ./companion:/app       # mount project
+      - /app/node_modules      # cache node_modules
+      - ./companion/.env:/app/.env
     ports:
       - "19000:19000"
       - "19001:19001"
       - "19002:19002"
-    tty: true
     stdin_open: true
-
+    tty: true
