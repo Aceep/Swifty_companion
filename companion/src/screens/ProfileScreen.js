@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, useWindowDimensions, SafeAreaView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import SkillProgress from '../components/SkillProgress';
-import ProjectItem from '../components/ProjectItem';
+import ProjectPagination from '../components/ProjectPagination';
 
 export default function ProfileScreen({ route }) {
   const { user } = route.params;
@@ -75,14 +75,7 @@ export default function ProfileScreen({ route }) {
           ))}
         </View>
 
-          <Text style={styles.sectionTitle}>🚀 Projects</Text>
-          <View style={isLandscape ? styles.projectsGrid : null}>
-            {user.projects_users?.filter(p => p.project).slice(0, 20).map(project => (
-              <View key={project.id} style={isLandscape ? styles.projectGridItem : null}>
-                <ProjectItem project={project} />
-              </View>
-            ))}
-          </View>
+          <ProjectPagination user={user} />
         </View>
       </ScrollView>
     </SafeAreaView>
