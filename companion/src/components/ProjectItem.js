@@ -2,14 +2,15 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
 export default function ProjectItem({ project }) {
-  // project = { name, status, final_mark, validated? }
+  const { final_mark, name, status, validated } = project;
+  console.log('📄 [ProjectItem] Rendering project:', project.project.name, project);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.name}>{project.name}</Text>
-      <Text>Status: {project.status}</Text>
-      <Text>Final mark: {project.final_mark ?? "N/A"}</Text>
-      <Text>Validated: {project.validated ? "✅" : "❌"}</Text>
+      <Text style={styles.name}>{project.project.name}</Text>
+      <Text>Status: {status}</Text>
+      <Text>Final mark: {final_mark ?? "N/A"}</Text>
+      <Text>Validated: {validated ? "✅" : "❌"}</Text>
     </View>
   );
 }

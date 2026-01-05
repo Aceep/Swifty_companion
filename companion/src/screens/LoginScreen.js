@@ -6,10 +6,13 @@ export default function LoginScreen({ navigation }) {
   const [login, setLogin] = useState('');
 
   const handleSearch = async () => {
+    console.log('🔍 [LoginScreen] Searching for user:', login);
     try {
       const user = await getUser(login);
+      console.log('✅ [LoginScreen] User found:', user.login);
       navigation.navigate('Profile', { user });
     } catch (err) {
+      console.error('❌ [LoginScreen] Error fetching user:', err);
       Alert.alert('Error', 'User not found or network error');
     }
   };

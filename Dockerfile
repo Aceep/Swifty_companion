@@ -11,8 +11,17 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Expose Expo dev server ports
-EXPOSE 19000 19001 19002
+RUN npm install -g expo-cli
 
-# Start bash for interactive development
-CMD ["/bin/bash"]
+# Copy package files and install dependencies
+COPY companion/package*.json ./
+RUN npm install
+
+# Copy the rest of the application code
+COPY companion/ .
+
+# Expose the default Expo ports
+EXPOSE 19000 19001 19002 8081
+
+# Start the Expo development server
+CMD ["/bin/sh"]
