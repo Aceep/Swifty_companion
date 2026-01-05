@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Animated, useWindowDimensions, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getUser } from '../api/intra42';
+import { getUser, ErrorTypes } from '../api/intra42';
 
 export default function LoginScreen({ navigation }) {
   const [login, setLogin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const shakeAnimation = useState(new Animated.Value(0))[0];
+  const { width, height } = useWindowDimensions();
+  const isSmallScreen = width < 375;
+  const isLandscape = width > height;
 
   const shake = () => {
     Animated.sequence([
@@ -36,7 +39,22 @@ export default function LoginScreen({ navigation }) {
       navigation.navigate('Profile', { user });
     } catch (err) {
       console.error('❌ [LoginScreen] Error fetching user:', err);
-      setError(err.message || 'User not found');
+      
+      // Get appropriate error message based on error type
+      let errorMessage = err.message || 'An unexpected error occurred';
+      
+      // Add helpful hints based on error type
+      if (err.type === ErrorTypes.NETWORK_ERROR) {
+        errorMessage = '📶 ' + errorMessage;
+      } else if (err.type === ErrorTypes.USER_NOT_FOUND) {
+        errorMessage = '🔍 ' + errorMessage;
+      } else if (err.type === ErrorTypes.RATE_LIMITED) {
+        errorMessage = '⏳ ' + errorMessage;
+      } else if (err.type === ErrorTypes.SERVER_ERROR) {
+        errorMessage = '🔧 ' + errorMessage;
+      }
+      
+      setError(errorMessage);
       shake();
     } finally {
       setLoading(false);
@@ -45,14 +63,21 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.gradient}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnimation }] }]}>
-          <Text style={styles.logo}>42</Text>
-          <Text style={styles.title}>Swifty Companion</Text>
-          <Text style={styles.subtitle}>Search for a 42 student</Text>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={[styles.container, isLandscape && styles.containerLandscape]}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <Animated.View style={[
+            styles.card, 
+            { transform: [{ translateX: shakeAnimation }] },
+            isLandscape && styles.cardLandscape,
+            { maxWidth: Math.min(width * 0.9, 450) }
+          ]}>
+            <Text style={[styles.logo, isSmallScreen && styles.logoSmall]}>42</Text>
+            <Text style={[styles.title, isSmallScreen && styles.titleSmall]}>Swifty Companion</Text>
+            <Text style={[styles.subtitle, isSmallScreen && styles.subtitleSmall]}>Search for a 42 student</Text>
           
           {error ? (
             <View style={styles.errorContainer}>
@@ -94,8 +119,9 @@ export default function LoginScreen({ navigation }) {
               <Text style={styles.buttonText}>Search</Text>
             )}
           </TouchableOpacity>
-        </Animated.View>
-      </KeyboardAvoidingView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -104,20 +130,32 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
+  safeArea: {
+    flex: 1,
+  },
   container: { 
     flex: 1, 
     justifyContent: 'center', 
-    padding: 20 
+    alignItems: 'center',
+    padding: 20,
+    paddingHorizontal: '5%',
+  },
+  containerLandscape: {
+    paddingVertical: 10,
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 32,
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 8,
+  },
+  cardLandscape: {
+    padding: 24,
   },
   logo: {
     fontSize: 64,
@@ -126,6 +164,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  logoSmall: {
+    fontSize: 48,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -133,11 +174,18 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 8,
   },
+  titleSmall: {
+    fontSize: 22,
+  },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     color: '#6B7280',
     marginBottom: 32,
+  },
+  subtitleSmall: {
+    fontSize: 14,
+    marginBottom: 24,
   },
   errorContainer: {
     backgroundColor: '#FEF2F2',

@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 
 export default function SkillProgress({ skill, level }) {
   const percentage = Math.min(level * 10, 100);
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 375;
   
   const getColor = (level) => {
     if (level < 30) return '#EF4444';
@@ -14,13 +16,18 @@ export default function SkillProgress({ skill, level }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.skillName}>{skill}</Text>
-        <Text style={styles.levelText}>{level.toFixed(2)}</Text>
+        <Text style={[styles.skillName, isSmallScreen && styles.skillNameSmall]} numberOfLines={1}>
+          {skill}
+        </Text>
+        <Text style={[styles.levelText, isSmallScreen && styles.levelTextSmall]}>
+          {level.toFixed(2)}
+        </Text>
       </View>
-      <View style={styles.barBackground}>
+      <View style={[styles.barBackground, isSmallScreen && styles.barBackgroundSmall]}>
         <View 
           style={[
             styles.barFill, 
+            isSmallScreen && styles.barFillSmall,
             { 
               width: `${percentage}%`,
               backgroundColor: getColor(percentage)
@@ -47,11 +54,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     flex: 1,
+    marginRight: 8,
+  },
+  skillNameSmall: {
+    fontSize: 12,
   },
   levelText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#6B7280',
+  },
+  levelTextSmall: {
+    fontSize: 11,
   },
   barBackground: { 
     height: 10, 
@@ -59,8 +73,16 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     overflow: 'hidden',
   },
+  barBackgroundSmall: {
+    height: 8,
+    borderRadius: 4,
+  },
   barFill: { 
     height: 10, 
     borderRadius: 5,
+  },
+  barFillSmall: {
+    height: 8,
+    borderRadius: 4,
   },
 });

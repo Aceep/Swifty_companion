@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, useWindowDimensions, SafeAreaView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import SkillProgress from '../components/SkillProgress';
 import ProjectItem from '../components/ProjectItem';
@@ -8,35 +8,50 @@ export default function ProfileScreen({ route }) {
   const { user } = route.params;
   const cursus = user.cursus_users[0];
   const level = cursus?.level || 0;
+  const { width, height } = useWindowDimensions();
+  const isSmallScreen = width < 375;
+  const isLandscape = width > height;
+  const avatarSize = isSmallScreen ? 100 : isLandscape ? 100 : 120;
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={['#00babc', '#1e3a8a']}
-        style={styles.header}
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Image source={{ uri: user.image?.link || user.image_url }} style={styles.avatar} />
-        <Text style={styles.name}>{user.login}</Text>
-        <Text style={styles.displayName}>{user.displayname || user.usual_full_name}</Text>
-      </LinearGradient>
+        <LinearGradient
+          colors={['#00babc', '#1e3a8a']}
+          style={[styles.header, isLandscape && styles.headerLandscape]}
+        >
+          <Image 
+            source={{ uri: user.image?.link || user.image_url }} 
+            style={[
+              styles.avatar,
+              { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }
+            ]} 
+          />
+          <Text style={[styles.name, isSmallScreen && styles.nameSmall]}>{user.login}</Text>
+          <Text style={styles.displayName}>{user.displayname || user.usual_full_name}</Text>
+        </LinearGradient>
 
-      <View style={styles.content}>
-        <View style={styles.statsCard}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{level.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>Level</Text>
+        <View style={[styles.content, isLandscape && styles.contentLandscape]}>
+          <View style={[styles.statsCard, isLandscape && styles.statsCardLandscape]}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, isSmallScreen && styles.statValueSmall]}>{level.toFixed(2)}</Text>
+              <Text style={styles.statLabel}>Level</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, isSmallScreen && styles.statValueSmall]}>{user.wallet || 0} ₳</Text>
+              <Text style={styles.statLabel}>Wallet</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, isSmallScreen && styles.statValueSmall]}>{user.correction_point || 0}</Text>
+              <Text style={styles.statLabel}>Points</Text>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{user.wallet || 0} ₳</Text>
-            <Text style={styles.statLabel}>Wallet</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{user.correction_point || 0}</Text>
-            <Text style={styles.statLabel}>Points</Text>
-          </View>
-        </View>
 
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
@@ -60,30 +75,47 @@ export default function ProfileScreen({ route }) {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>🚀 Projects</Text>
-        {user.projects_users?.filter(p => p.project).slice(0, 20).map(project => (
-          <ProjectItem key={project.id} project={project} />
-        ))}
-      </View>
-    </ScrollView>
+          <Text style={styles.sectionTitle}>🚀 Projects</Text>
+          <View style={isLandscape ? styles.projectsGrid : null}>
+            {user.projects_users?.filter(p => p.project).slice(0, 20).map(project => (
+              <View key={project.id} style={isLandscape ? styles.projectGridItem : null}>
+                <ProjectItem project={project} />
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
   container: { 
     flex: 1, 
-    backgroundColor: '#F3F4F6' 
+    backgroundColor: '#F3F4F6',
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: Platform.OS === 'ios' ? 20 : 40,
     paddingBottom: 32,
-    paddingHorizontal: 20,
+    paddingHorizontal: '5%',
+  },
+  headerLandscape: {
+    paddingTop: 20,
+    paddingBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
   },
   avatar: { 
-    width: 120, 
-    height: 120, 
-    borderRadius: 60, 
     borderWidth: 4,
     borderColor: '#fff',
     marginBottom: 16,
@@ -98,13 +130,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 4,
   },
+  nameSmall: {
+    fontSize: 24,
+  },
   displayName: {
     fontSize: 16,
     color: '#E5E7EB',
   },
   content: {
-    padding: 16,
+    paddingHorizontal: '4%',
+    paddingVertical: 16,
     marginTop: -20,
+  },
+  contentLandscape: {
+    paddingHorizontal: '8%',
   },
   statsCard: {
     backgroundColor: '#fff',
@@ -119,6 +158,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  statsCardLandscape: {
+    maxWidth: 500,
+    alignSelf: 'center',
+    width: '100%',
+  },
   statItem: {
     alignItems: 'center',
     flex: 1,
@@ -128,6 +172,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#00babc',
     marginBottom: 4,
+  },
+  statValueSmall: {
+    fontSize: 20,
   },
   statLabel: {
     fontSize: 12,
@@ -189,5 +236,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  projectsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  projectGridItem: {
+    width: '48%',
   },
 });

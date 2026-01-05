@@ -1,10 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
 
 export default function ProjectItem({ project }) {
   const { final_mark, status } = project;
   const validated = project["validated?"];
   const projectName = project.project?.name || "Unknown Project";
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 375;
   
   const getStatusColor = () => {
     if (validated) return '#10B981';
@@ -30,22 +32,22 @@ export default function ProjectItem({ project }) {
   return (
     <View style={[styles.container, { borderLeftColor: getStatusColor() }]}>
       <View style={styles.header}>
-        <Text style={styles.icon}>{getStatusIcon()}</Text>
-        <Text style={styles.name} numberOfLines={2}>{projectName}</Text>
+        <Text style={[styles.icon, isSmallScreen && styles.iconSmall]}>{getStatusIcon()}</Text>
+        <Text style={[styles.name, isSmallScreen && styles.nameSmall]} numberOfLines={2}>{projectName}</Text>
       </View>
       
       <View style={styles.details}>
         <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Status</Text>
-          <Text style={[styles.detailValue, { color: getStatusColor() }]}>
+          <Text style={[styles.detailLabel, isSmallScreen && styles.detailLabelSmall]}>Status</Text>
+          <Text style={[styles.detailValue, isSmallScreen && styles.detailValueSmall, { color: getStatusColor() }]}>
             {status?.replace('_', ' ').toUpperCase()}
           </Text>
         </View>
         
         {final_mark !== null && final_mark !== undefined && (
           <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Score</Text>
-            <Text style={[styles.score, { color: getMarkColor(final_mark) }]}>
+            <Text style={[styles.detailLabel, isSmallScreen && styles.detailLabelSmall]}>Score</Text>
+            <Text style={[styles.score, isSmallScreen && styles.scoreSmall, { color: getMarkColor(final_mark) }]}>
               {final_mark}
             </Text>
           </View>
@@ -77,11 +79,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginRight: 8,
   },
+  iconSmall: {
+    fontSize: 16,
+    marginRight: 6,
+  },
   name: {
     fontWeight: '700',
     fontSize: 16,
     color: '#1F2937',
     flex: 1,
+  },
+  nameSmall: {
+    fontSize: 14,
   },
   details: {
     flexDirection: 'row',
@@ -97,12 +106,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
+  detailLabelSmall: {
+    fontSize: 10,
+  },
   detailValue: {
     fontSize: 13,
     fontWeight: '600',
   },
+  detailValueSmall: {
+    fontSize: 11,
+  },
   score: {
     fontSize: 20,
     fontWeight: '800',
+  },
+  scoreSmall: {
+    fontSize: 16,
   },
 });
