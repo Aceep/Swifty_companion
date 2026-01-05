@@ -6,7 +6,7 @@ import ProjectItem from '../components/ProjectItem';
 
 export default function ProfileScreen({ route }) {
   const { user } = route.params;
-  const cursus = user.cursus_users[0];
+  const cursus = user.cursus_users.find(c => c.cursus.name === '42cursus');
   const level = cursus?.level || 0;
   const { width, height } = useWindowDimensions();
   const isSmallScreen = width < 375;

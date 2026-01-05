@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 
 export default function SkillProgress({ skill, level }) {

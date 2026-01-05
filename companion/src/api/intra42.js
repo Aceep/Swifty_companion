@@ -3,6 +3,7 @@ import axios from 'axios';
 
 let token = null;
 let tokenExpiry = null;
+let tokenRefreshPromise = null; // Prevent concurrent token refresh requests
 
 console.log('🔧 [API] Environment check:', { 
   CLIENT_ID: CLIENT_ID ? 'set' : 'undefined', 
@@ -31,25 +32,79 @@ export const ErrorTypes = {
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 };
 
-// Check if token is expired
+// Check if token is expired or about to expire (with 60 second buffer)
 function isTokenExpired() {
   if (!token || !tokenExpiry) return true;
-  return Date.now() >= tokenExpiry;
+  // Consider token expired 60 seconds before actual expiry to prevent edge cases
+  return Date.now() >= (tokenExpiry - 60000);
+}
+
+// Check if token needs refresh soon (within 5 minutes)
+function shouldRefreshToken() {
+  if (!token || !tokenExpiry) return true;
+  return Date.now() >= (tokenExpiry - 300000); // 5 minutes before expiry
+}
+
+// Get remaining token lifetime in seconds (for debugging)
+export function getTokenLifetime() {
+  if (!token || !tokenExpiry) return 0;
+  return Math.max(0, Math.floor((tokenExpiry - Date.now()) / 1000));
 }
 
 // Clear token (useful for retry logic)
 export function clearToken() {
   token = null;
   tokenExpiry = null;
+  tokenRefreshPromise = null;
   console.log('🔄 [API] Token cleared');
 }
 
-export async function getAccessToken() {
-  if (token && !isTokenExpired()) {
-    console.log('🔑 [API] Using cached access token');
+export async function getAccessToken(forceRefresh = false) {
+  // If token is valid and not forcing refresh, return cached token
+  if (!forceRefresh && token && !isTokenExpired()) {
+    // Log remaining lifetime for debugging
+    const remaining = getTokenLifetime();
+    console.log(`🔑 [API] Using cached access token (expires in ${remaining}s)`);
+    
+    // Proactively refresh if token will expire soon (background refresh)
+    if (shouldRefreshToken() && !tokenRefreshPromise) {
+      console.log('🔄 [API] Token expiring soon, refreshing in background...');
+      tokenRefreshPromise = fetchNewToken().catch(err => {
+        console.warn('⚠️ [API] Background token refresh failed:', err.message);
+        tokenRefreshPromise = null;
+      });
+    }
+    
     return token;
   }
 
+  // If there's already a token refresh in progress, wait for it
+  if (tokenRefreshPromise) {
+    console.log('⏳ [API] Waiting for ongoing token refresh...');
+    try {
+      await tokenRefreshPromise;
+      if (token && !isTokenExpired()) {
+        return token;
+      }
+    } catch (err) {
+      // Token refresh failed, will try again below
+      tokenRefreshPromise = null;
+    }
+  }
+
+  // Fetch new token
+  tokenRefreshPromise = fetchNewToken();
+  try {
+    const newToken = await tokenRefreshPromise;
+    tokenRefreshPromise = null;
+    return newToken;
+  } catch (err) {
+    tokenRefreshPromise = null;
+    throw err;
+  }
+}
+
+async function fetchNewToken() {
   console.log('📡 [API] Requesting new access token');
   
   // Check if credentials are configured
@@ -70,9 +125,10 @@ export async function getAccessToken() {
       timeout: 10000, // 10 second timeout
     });
     token = resp.data.access_token;
-    // Set token expiry (42 API tokens typically last 2 hours, we'll refresh at 1h 50min)
-    tokenExpiry = Date.now() + (resp.data.expires_in ? (resp.data.expires_in - 600) * 1000 : 6600000);
-    console.log('✅ [API] Access token obtained');
+    const expiresIn = resp.data.expires_in || 7200; // Default 2 hours if not provided
+    // Store exact expiry time
+    tokenExpiry = Date.now() + (expiresIn * 1000);
+    console.log(`✅ [API] Access token obtained, expires in ${expiresIn} seconds`);
     return token;
   } catch (err) {
     console.error('❌ [API] Failed to obtain access token:', err.response?.status, err.message);
@@ -127,7 +183,7 @@ export async function getAccessToken() {
 }
 
 export async function getUser(login, retryCount = 0) {
-  console.log(`📡 [API] Fetching user: ${login}`);
+  console.log(`📡 [API] Fetching user: ${login}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
   
   // Validate login input
   const trimmedLogin = login.trim().toLowerCase();
@@ -147,7 +203,8 @@ export async function getUser(login, retryCount = 0) {
   }
 
   try {
-    const t = await getAccessToken();
+    // Force refresh token on retry
+    const t = await getAccessToken(retryCount > 0);
     const resp = await axios.get(`${API_URL}/users/${trimmedLogin}`, {
       headers: { Authorization: `Bearer ${t}` },
       timeout: 15000, // 15 second timeout
@@ -188,9 +245,9 @@ export async function getUser(login, retryCount = 0) {
     }
     
     if (status === 401) {
-      // Token might be invalid, clear it and retry once
-      if (retryCount < 1) {
-        console.log('🔄 [API] Token invalid, clearing and retrying...');
+      // Token expired or invalid - clear it and retry with fresh token
+      if (retryCount < 2) {
+        console.log('🔄 [API] Token expired/invalid, refreshing and retrying...');
         clearToken();
         return getUser(login, retryCount + 1);
       }
